@@ -20,22 +20,41 @@ export default function WorkersPage() {
     setIsModalOpen(false);
   };
 
+  // Add delete function
+  const deleteWorker = (id: string) => {
+    setWorkers(workers.filter(worker => worker.id !== id));
+  };
+
+  // Add update function
+  const updateWorker = (updatedWorker: Worker) => {
+    setWorkers(workers.map(worker =>
+      worker.id === updatedWorker.id ? updatedWorker : worker
+    ));
+  };
+
   return (
-    <div>
-      <div className="flex justify-between mb-4">
-        <h1 className="text-2xl font-bold">Workers</h1>
+    <div className="p-6">
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl font-bold">Workers Management</h1>
         <button
-          className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+          className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition-colors"
           onClick={() => setIsModalOpen(true)}
         >
           Add Worker
         </button>
       </div>
 
-      <WorkerTable workers={workers} />
+      <WorkerTable
+        workers={workers}
+        onDelete={deleteWorker}
+        onUpdate={updateWorker}
+      />
 
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)}>
-        <WorkerForm onSubmit={addWorker} onCancel={() => setIsModalOpen(false)} />
+        <WorkerForm
+          onSubmit={addWorker}
+          onCancel={() => setIsModalOpen(false)}
+        />
       </Modal>
     </div>
   );

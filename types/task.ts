@@ -1,3 +1,4 @@
+// C:\Users\laloo\job-progress-tracker\types\task.ts
 export interface Task {
   id: string;
   projectId: string;

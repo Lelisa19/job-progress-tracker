@@ -1,7 +1,11 @@
+// types/payment.ts
 export interface Payment {
   id: string;
   workerId: string;
-  amount: number;
-  status: "Paid" | "Unpaid";
-  date: Date;
+  workerName: string;      // Add this
+  totalWage: number;       // Add this
+  paidAmount: number;      // Add this
+  unpaidAmount: number;    // Add this
+  status: "Paid" | "Partial" | "Unpaid";
+  paymentDate: string;     // Add this
 }

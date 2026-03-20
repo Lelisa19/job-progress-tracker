@@ -1,5 +1,6 @@
+"use client";
 import { useState } from "react";
-import { Project } from "../../../types/project";
+import { Project } from "../../../../../types/project";
 
 interface ProjectFormProps {
   onSubmit: (project: Project) => void;
