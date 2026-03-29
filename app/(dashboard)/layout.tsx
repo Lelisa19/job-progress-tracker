@@ -1,8 +1,10 @@
 "use client";
+
 import React from "react";
-import Sidebar from "../../components/layout/EmployerSidebar";
-import WorkerSidebar from "../../components/layout/WorkerSidebar";
 import { usePathname } from "next/navigation";
+import EmployerSidebar from "../../components/layout/EmployerSidebar";
+import WorkerSidebar from "../../components/layout/WorkerSidebar";
+import DashboardHeader from "../../components/layout/DashboardHeader";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -10,13 +12,14 @@ interface DashboardLayoutProps {
 
 export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const pathname = usePathname();
-  const isWorker = pathname?.startsWith('/worker');
+  const isWorker = pathname?.startsWith("/worker");
 
   return (
-    <div className="flex min-h-screen">
-      {isWorker ? <WorkerSidebar /> : <Sidebar />}
-      <div className="flex-1 flex flex-col">
-        <main className="p-6 flex-1 bg-gray-100">{children}</main>
+    <div className="flex min-h-screen bg-[#F8F9FA]">
+      {isWorker ? <WorkerSidebar /> : <EmployerSidebar />}
+      <div className="flex min-h-screen min-w-0 flex-1 flex-col">
+        <DashboardHeader />
+        <main className="flex-1 overflow-auto p-6">{children}</main>
       </div>
     </div>
   );

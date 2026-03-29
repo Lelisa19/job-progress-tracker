@@ -1,60 +1,64 @@
 "use client";
 
-import { useState, Suspense, useEffect } from 'react';
-import Link from 'next/link';
-import { useSearchParams, useRouter } from 'next/navigation';
+import { useState, Suspense, useEffect } from "react";
+import Link from "next/link";
+import { useSearchParams, useRouter } from "next/navigation";
+import { useAuth } from "@/app/contexts/AuthContext";
 
 function SignupContent() {
     const searchParams = useSearchParams();
     const router = useRouter();
-    const [role, setRole] = useState<'employer' | 'worker'>('employer');
+    const { refreshUser } = useAuth();
+    const [role, setRole] = useState<"employer" | "worker">("employer");
+    const [error, setError] = useState<string | null>(null);
+    const [pending, setPending] = useState(false);
 
-    // Load the correct toggle state derived from URL parameters
     useEffect(() => {
-        const urlRole = searchParams.get('role');
-        if (urlRole === 'worker' || urlRole === 'employer') {
+        const urlRole = searchParams.get("role");
+        if (urlRole === "worker" || urlRole === "employer") {
             setRole(urlRole);
         }
     }, [searchParams]);
 
-    const handleSignup = (e: React.FormEvent) => {
+    const handleSignup = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
+        setError(null);
+        const formData = new FormData(e.currentTarget);
+        const name = String(formData.get("fullName") ?? "").trim();
+        const email = String(formData.get("email") ?? "").trim();
+        const phone = String(formData.get("phone") ?? "").trim();
+        const password = String(formData.get("password") ?? "");
+        const confirm = String(formData.get("confirmPassword") ?? "");
 
-        // Get form values
-        const formData = new FormData(e.target as HTMLFormElement);
-        const fullName = formData.get('fullName') as string;
-        const email = formData.get('email') as string;
-        const phone = formData.get('phone') as string;
+        if (password.length < 8) {
+            setError("Password must be at least 8 characters.");
+            return;
+        }
+        if (password !== confirm) {
+            setError("Passwords do not match.");
+            return;
+        }
 
-        // Create initials from name
-        const initials = fullName
-            .split(' ')
-            .map(word => word[0])
-            .join('')
-            .toUpperCase()
-            .substring(0, 2);
-
-        // Store the role in localStorage and cookie
-        localStorage.setItem('userRole', role);
-        document.cookie = `userRole=${role}; path=/; max-age=86400`; // 24 hours
-
-        // Store user info
-        const userName = fullName || (role === 'employer' ? 'John Anderson' : 'Carlos Rodriguez');
-        const userInitials = initials || (role === 'employer' ? 'JA' : 'CR');
-
-        localStorage.setItem('userName', userName);
-        localStorage.setItem('userInitials', userInitials);
-        localStorage.setItem('userEmail', email);
-        localStorage.setItem('userPhone', phone);
-
-        document.cookie = `userName=${userName}; path=/; max-age=86400`;
-        document.cookie = `userInitials=${userInitials}; path=/; max-age=86400`;
-
-        // Redirect based on role
-        if (role === 'employer') {
-            router.push('/employer/dashboard');
-        } else {
-            router.push('/worker/dashboard');
+        setPending(true);
+        try {
+            const res = await fetch("/api/auth/register", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ name, email, phone, password, role }),
+                credentials: "include",
+            });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) {
+                setError(data.error || "Registration failed");
+                setPending(false);
+                return;
+            }
+            await refreshUser();
+            router.push(role === "employer" ? "/employer/dashboard" : "/worker/dashboard");
+        } catch {
+            setError("Network error.");
+        } finally {
+            setPending(false);
         }
     };
 
@@ -110,6 +114,9 @@ function SignupContent() {
                 </div>
 
                 {/* Form */}
+                {error && (
+                    <p className="mb-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>
+                )}
                 <form onSubmit={handleSignup} className="space-y-4">
                     <div>
                         <label htmlFor="fullName" className="block text-sm font-semibold text-gray-900 mb-2">
@@ -188,9 +195,10 @@ function SignupContent() {
 
                     <button
                         type="submit"
-                        className="w-full rounded-xl bg-[#2563eb] px-4 py-3.5 text-[15px] font-semibold text-white shadow-sm hover:bg-blue-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 transition-colors mt-4"
+                        disabled={pending}
+                        className="mt-4 w-full rounded-xl bg-[#2563eb] px-4 py-3.5 text-[15px] font-semibold text-white shadow-sm transition-colors hover:bg-blue-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 disabled:opacity-60"
                     >
-                        Sign up
+                        {pending ? "Creating account…" : "Sign up"}
                     </button>
                 </form>
 

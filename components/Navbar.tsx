@@ -2,77 +2,175 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "../app/contexts/AuthContext";
-import { Bell } from "lucide-react";
-import { useState, useRef } from "react";
+import { Bell, Wrench } from "lucide-react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import NotificationsPanel from "./notifications/NotificationPanel";
+import type { NavNotification } from "@/types/notification";
 
 export default function Navbar() {
   const pathname = usePathname();
-  const { user, isLoading } = useAuth();
+  const isAppDashboard =
+    pathname?.startsWith("/employer") || pathname?.startsWith("/worker");
+  const { user, isLoading, logout } = useAuth();
+  const router = useRouter();
+
+  if (isAppDashboard) {
+    return null;
+  }
+
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const notificationButtonRef = useRef<HTMLButtonElement>(null);
+  const [notifications, setNotifications] = useState<NavNotification[]>([]);
+  const [readIds, setReadIds] = useState<Set<string>>(new Set());
+
+  const isLandingStyle =
+    pathname === "/" || pathname === "/login" || pathname === "/signup";
+
+  const loadNotifications = useCallback(() => {
+    if (!user) {
+      setNotifications([]);
+      return;
+    }
+    fetch("/api/notifications", { credentials: "include" })
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.notifications) setNotifications(d.notifications);
+      })
+      .catch(() => setNotifications([]));
+  }, [user]);
+
+  useEffect(() => {
+    loadNotifications();
+  }, [loadNotifications]);
+
+  useEffect(() => {
+    if (!user) setReadIds(new Set());
+  }, [user]);
+
+  const unreadCount = notifications.filter((n) => !readIds.has(n.id)).length;
+
+  const onMarkRead = (id: string) => {
+    setReadIds((prev) => new Set(prev).add(id));
+  };
+
+  const onMarkAllRead = () => {
+    setReadIds(new Set(notifications.map((n) => n.id)));
+  };
 
   return (
-    <nav className="w-full flex items-center justify-between px-6 py-5 max-w-7xl mx-auto bg-white border-b border-gray-100">
-      {/* Logo */}
-      <Link href="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
-        <div className="text-blue-600">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-            <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />
-          </svg>
+    <nav className="mx-auto flex w-full max-w-7xl items-center justify-between gap-6 border-b border-gray-100 bg-white px-6 py-5">
+      <Link
+        href="/"
+        className="flex shrink-0 items-center gap-2 transition-opacity hover:opacity-80"
+      >
+        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#2563eb] text-white shadow-sm">
+          <Wrench className="h-5 w-5" strokeWidth={2.2} aria-hidden />
         </div>
-        <span className="font-bold text-xl tracking-tight">JobTracker</span>
+        <span className="text-xl font-bold tracking-tight text-[#0f172a]">
+          JobTracker
+        </span>
       </Link>
 
-      {/* Right side */}
+      {!isLandingStyle && (
+        <div className="hidden flex-1 items-center justify-center gap-8 md:flex">
+          <Link
+            href="/#features"
+            className="text-sm font-medium text-gray-600 hover:text-gray-900"
+          >
+            Features
+          </Link>
+          <Link
+            href="/#about"
+            className="text-sm font-medium text-gray-600 hover:text-gray-900"
+          >
+            About
+          </Link>
+          <Link
+            href="/#contact"
+            className="text-sm font-medium text-gray-600 hover:text-gray-900"
+          >
+            Contact
+          </Link>
+        </div>
+      )}
+      {isLandingStyle && (
+        <div className="hidden flex-1 md:block" aria-hidden />
+      )}
+
       {isLoading ? (
-        <div className="w-10 h-10 bg-gray-200 rounded-full animate-pulse"></div>
+        <div className="h-10 w-10 animate-pulse rounded-full bg-gray-200" />
       ) : user ? (
         <div className="flex items-center gap-4">
-          {/* Notification Bell - Only when logged in */}
           <div className="relative">
             <button
+              type="button"
               ref={notificationButtonRef}
               onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
-              className="p-2.5 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-full transition-colors relative"
+              className="relative rounded-full p-2.5 text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900"
+              aria-label={`Notifications${unreadCount ? `, ${unreadCount} unread` : ""}`}
             >
-              <Bell className="w-5 h-5" />
-              {/* Unread badge - you can make this dynamic later */}
-              <span className="absolute top-1 right-1 w-4 h-4 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center border-2 border-white">
-                3
-              </span>
+              <Bell className="h-5 w-5" />
+              {unreadCount > 0 && (
+                <span className="absolute right-1 top-1 flex h-4 min-w-[1rem] items-center justify-center rounded-full border-2 border-white bg-red-500 px-0.5 text-[10px] font-bold text-white">
+                  {unreadCount > 9 ? "9+" : unreadCount}
+                </span>
+              )}
             </button>
 
-            {/* Notifications Panel - Only render if ref exists */}
-            {notificationButtonRef.current && (
-              <NotificationsPanel
-                isOpen={isNotificationsOpen}
-                onClose={() => setIsNotificationsOpen(false)}
-                buttonRef={notificationButtonRef as React.RefObject<HTMLButtonElement>}
-              />
-            )}
+            <NotificationsPanel
+              isOpen={isNotificationsOpen}
+              onClose={() => setIsNotificationsOpen(false)}
+              buttonRef={notificationButtonRef}
+              notifications={notifications}
+              readIds={readIds}
+              onMarkRead={onMarkRead}
+              onMarkAllRead={onMarkAllRead}
+            />
           </div>
 
-          {/* Profile */}
           <div className="flex items-center gap-3">
             <div className="text-right">
               <div className="text-sm font-medium text-gray-900">{user.name}</div>
-              <div className="text-xs text-gray-500 capitalize">{user.role}</div>
+              <div className="text-xs capitalize text-gray-500">{user.role}</div>
             </div>
-            <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center text-white font-semibold">
-              {user.initials}
-            </div>
+            {user.avatarUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={user.avatarUrl}
+                alt=""
+                className="h-10 w-10 rounded-full border border-gray-200 object-cover shadow-sm"
+              />
+            ) : (
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-600 text-sm font-semibold text-white">
+                {user.initials}
+              </div>
+            )}
+            <button
+              type="button"
+              onClick={async () => {
+                await logout();
+                router.push("/");
+              }}
+              className="text-sm font-semibold text-gray-600 hover:text-gray-900"
+            >
+              Log out
+            </button>
           </div>
         </div>
       ) : (
-        /* Login/Signup buttons */
         <div className="flex items-center gap-6">
-          <Link href="/login" className="text-sm font-semibold text-gray-700 hover:text-black">
+          <Link
+            href="/login"
+            className="text-sm font-semibold text-gray-700 hover:text-black"
+          >
             Log in
           </Link>
-          <Link href="/signup" className="px-5 py-2.5 bg-[#2563eb] text-white text-sm font-medium rounded-md hover:bg-blue-700">
+          <Link
+            href="/signup"
+            className="rounded-md bg-[#2563eb] px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-700"
+          >
             Sign up
           </Link>
         </div>

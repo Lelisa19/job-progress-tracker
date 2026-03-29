@@ -13,6 +13,7 @@ interface WorkerFormProps {
 export default function WorkerForm({ onSubmit, onCancel, initialData }: WorkerFormProps) {
   const [formData, setFormData] = useState({
     name: initialData?.name || "",
+    email: initialData?.email || "",
     phone: initialData?.phone || "",
     skill: initialData?.skill || "",
     dailyWage: initialData?.dailyWage || 0,
@@ -55,6 +56,19 @@ export default function WorkerForm({ onSubmit, onCancel, initialData }: WorkerFo
           onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
           className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
           placeholder="0912345678"
+        />
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          Email (match worker login to link account)
+        </label>
+        <input
+          type="email"
+          value={formData.email}
+          onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          placeholder="worker@email.com"
         />
       </div>
 

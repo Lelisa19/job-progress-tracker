@@ -20,15 +20,24 @@ interface TaskTableProps {
     tasks: TaskWithDetails[];
     onEdit: (task: TaskWithDetails) => void;
     onDelete: (taskId: string) => void;
+    readOnly?: boolean;
 }
 
-export default function TaskTable({ tasks, onEdit, onDelete }: TaskTableProps) {
+export default function TaskTable({
+    tasks,
+    onEdit,
+    onDelete,
+    readOnly = false,
+}: TaskTableProps) {
+    /** UI prompt: Pending = yellow, In Progress = blue, Completed = green */
     const getStatusColor = (status: string) => {
         switch (status) {
+            case "Pending":
+                return "bg-amber-100 text-amber-900";
             case "In Progress":
-                return "bg-yellow-100 text-yellow-700";
+                return "bg-blue-100 text-blue-800";
             case "Completed":
-                return "bg-green-100 text-green-700";
+                return "bg-green-100 text-green-800";
             default:
                 return "bg-gray-100 text-gray-700";
         }
@@ -44,7 +53,9 @@ export default function TaskTable({ tasks, onEdit, onDelete }: TaskTableProps) {
                         <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600">Project</th>
                         <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600">Deadline</th>
                         <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600">Status</th>
+                        {!readOnly && (
                         <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600">Action</th>
+                        )}
                     </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
@@ -83,15 +94,18 @@ export default function TaskTable({ tasks, onEdit, onDelete }: TaskTableProps) {
                                     {task.status}
                                 </span>
                             </td>
+                            {!readOnly && (
                             <td className="px-6 py-4">
                                 <div className="flex gap-2">
                                     <button
+                                        type="button"
                                         onClick={() => onEdit(task)}
                                         className="p-1 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
                                     >
                                         <Edit className="h-5 w-5" />
                                     </button>
                                     <button
+                                        type="button"
                                         onClick={() => onDelete(task.id)}
                                         className="p-1 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                                     >
@@ -99,6 +113,7 @@ export default function TaskTable({ tasks, onEdit, onDelete }: TaskTableProps) {
                                     </button>
                                 </div>
                             </td>
+                            )}
                         </tr>
                     ))}
                 </tbody>

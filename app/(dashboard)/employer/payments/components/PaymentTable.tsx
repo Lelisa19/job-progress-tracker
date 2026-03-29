@@ -2,34 +2,61 @@
 "use client";
 
 import { Payment } from "@/types/payment";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 interface PaymentTableProps {
   payments: Payment[];
+  showMarkPaid?: boolean;
 }
 
-export function PaymentTable({ payments }: PaymentTableProps) {
+export function PaymentTable({
+  payments,
+  showMarkPaid = true,
+}: PaymentTableProps) {
   const [paymentList, setPaymentList] = useState<Payment[]>(payments);
   const [searchTerm, setSearchTerm] = useState("");
+  const [busyId, setBusyId] = useState<string | null>(null);
 
-  const handleMarkPaid = (id: string) => {
-    setPaymentList((prev) =>
-      prev.map((payment) =>
-        payment.id === id
-          ? {
-            ...payment,
-            status: "Paid" as const,
-            paidAmount: payment.totalWage,
-            unpaidAmount: 0,
-            paymentDate: new Date().toLocaleDateString("en-US", {
-              month: "short",
-              day: "numeric",
-              year: "numeric",
-            }),
-          }
-          : payment
-      )
-    );
+  useEffect(() => {
+    setPaymentList(payments);
+  }, [payments]);
+
+  const handleMarkPaid = async (id: string) => {
+    setBusyId(id);
+    try {
+      const res = await fetch(`/api/payments/${id}`, {
+        method: "PATCH",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "markPaid" }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        alert(data.error || "Could not update payment");
+        return;
+      }
+      const p = data.payment as {
+        paidAmount: number;
+        unpaidAmount: number;
+        status: Payment["status"];
+        paymentDate: string;
+      };
+      setPaymentList((prev) =>
+        prev.map((payment) =>
+          payment.id === id
+            ? {
+                ...payment,
+                status: p.status,
+                paidAmount: p.paidAmount,
+                unpaidAmount: p.unpaidAmount,
+                paymentDate: p.paymentDate,
+              }
+            : payment
+        )
+      );
+    } finally {
+      setBusyId(null);
+    }
   };
 
   const filteredPayments = paymentList.filter((payment) =>
@@ -51,12 +78,21 @@ export function PaymentTable({ payments }: PaymentTableProps) {
 
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-      {/* Search input for mobile/tablet - integrated */}
       <div className="p-4 border-b border-gray-200 md:hidden">
         <div className="relative">
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-            <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            <svg
+              className="h-5 w-5 text-gray-400"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+              />
             </svg>
           </div>
           <input
@@ -91,9 +127,11 @@ export function PaymentTable({ payments }: PaymentTableProps) {
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Payment Date
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Actions
-              </th>
+              {showMarkPaid && (
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Actions
+                </th>
+              )}
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
@@ -131,18 +169,24 @@ export function PaymentTable({ payments }: PaymentTableProps) {
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                   {payment.paymentDate}
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm">
-                  <button
-                    onClick={() => handleMarkPaid(payment.id)}
-                    disabled={payment.status === "Paid"}
-                    className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${payment.status === "Paid"
-                        ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                        : "bg-blue-600 text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                {showMarkPaid && (
+                  <td className="px-6 py-4 whitespace-nowrap text-sm">
+                    <button
+                      type="button"
+                      onClick={() => handleMarkPaid(payment.id)}
+                      disabled={
+                        payment.status === "Paid" || busyId === payment.id
+                      }
+                      className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
+                        payment.status === "Paid"
+                          ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                          : "bg-blue-600 text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                       }`}
-                  >
-                    Mark Paid
-                  </button>
-                </td>
+                    >
+                      {busyId === payment.id ? "…" : "Mark Paid"}
+                    </button>
+                  </td>
+                )}
               </tr>
             ))}
           </tbody>

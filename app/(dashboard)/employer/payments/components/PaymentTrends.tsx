@@ -1,59 +1,72 @@
 // app/(dashboard)/employer/payments/components/PaymentTrends.tsx
 "use client";
 
-import { useState } from "react";
+export type TrendPoint = {
+  month: string;
+  paid: number;
+  unpaid: number;
+};
 
-const data = [
-    { day: "Mon", amount: 1250 },
-    { day: "Tue", amount: 1800 },
-    { day: "Wed", amount: 950 },
-    { day: "Thu", amount: 2100 },
-    { day: "Fri", amount: 1450 },
-    { day: "Sat", amount: 800 },
-    { day: "Sun", amount: 600 },
-];
+export function PaymentTrends({ data }: { data: TrendPoint[] }) {
+  const maxAmount = Math.max(
+    1,
+    ...data.map((d) => d.paid + d.unpaid)
+  );
 
-const maxAmount = Math.max(...data.map(d => d.amount));
+  return (
+    <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+      <h2 className="text-lg font-semibold text-gray-900 mb-6">
+        Payment trends (by month, from your records)
+      </h2>
+      {data.length === 0 ? (
+        <p className="text-sm text-gray-500">No payment history yet.</p>
+      ) : (
+        <div className="relative h-64">
+          <div className="absolute inset-0 flex items-end justify-around gap-1">
+            {data.map((month) => {
+              const total = month.paid + month.unpaid;
+              const totalHeight = (total / maxAmount) * 100;
+              const paidRatio = total > 0 ? month.paid / total : 0;
+              const paidHeight = totalHeight * paidRatio;
+              const unpaidHeight = totalHeight - paidHeight;
 
-export function PaymentTrends() {
-    const [hoveredBar, setHoveredBar] = useState<number | null>(null);
-
-    return (
-        <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-            <h2 className="text-lg font-semibold text-gray-900 mb-6">
-                Payment Trends (Last 7 Days)
-            </h2>
-            <div className="h-72">
-                <div className="h-full flex items-end justify-between gap-2">
-                    {data.map((item, index) => {
-                        const heightPercentage = (item.amount / maxAmount) * 100;
-                        const isHovered = hoveredBar === index;
-
-                        return (
-                            <div key={item.day} className="flex-1 flex flex-col items-center gap-2 h-full justify-end">
-                                <div className="relative w-full flex justify-center">
-                                    <div
-                                        className="w-full max-w-[60px] bg-blue-500 rounded-t-lg transition-all duration-200 hover:bg-blue-600 cursor-pointer"
-                                        style={{
-                                            height: `${heightPercentage}%`,
-                                            minHeight: "4px",
-                                            maxHeight: "calc(100% - 40px)"
-                                        }}
-                                        onMouseEnter={() => setHoveredBar(index)}
-                                        onMouseLeave={() => setHoveredBar(null)}
-                                    />
-                                    {isHovered && (
-                                        <div className="absolute -top-8 bg-gray-900 text-white text-xs px-2 py-1 rounded whitespace-nowrap z-10">
-                                            ${item.amount.toLocaleString()}
-                                        </div>
-                                    )}
-                                </div>
-                                <span className="text-xs font-medium text-gray-600 mt-2">{item.day}</span>
-                            </div>
-                        );
-                    })}
+              return (
+                <div
+                  key={month.month + String(month.paid)}
+                  className="flex flex-col items-center w-12"
+                >
+                  <div className="relative w-full h-48 flex flex-col-reverse">
+                    <div
+                      className="w-full bg-blue-500 rounded-t transition-all duration-300"
+                      style={{ height: `${paidHeight}%`, minHeight: total ? "4px" : 0 }}
+                    />
+                    <div
+                      className="w-full bg-gray-300 rounded-t transition-all duration-300"
+                      style={{
+                        height: `${unpaidHeight}%`,
+                        minHeight: total && month.unpaid ? "4px" : 0,
+                      }}
+                    />
+                  </div>
+                  <span className="text-xs text-gray-600 mt-2">
+                    {month.month}
+                  </span>
                 </div>
-            </div>
+              );
+            })}
+          </div>
         </div>
-    );
+      )}
+      <div className="flex items-center gap-6 mt-6 pt-4 border-t border-gray-100">
+        <div className="flex items-center gap-1">
+          <div className="w-3 h-3 rounded-full bg-blue-500" />
+          <span className="text-xs text-gray-600">Paid</span>
+        </div>
+        <div className="flex items-center gap-1">
+          <div className="w-3 h-3 rounded-full bg-gray-300" />
+          <span className="text-xs text-gray-600">Unpaid</span>
+        </div>
+      </div>
+    </div>
+  );
 }

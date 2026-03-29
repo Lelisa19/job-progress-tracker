@@ -18,39 +18,52 @@ interface TaskWithDetails {
 }
 
 interface TaskFormProps {
-  onSubmit: (task: Task) => void;
+  onSubmit: (task: Task) => void | Promise<void>;
   initialTask?: TaskWithDetails;
+  projects: { id: string; title: string }[];
+  workers: { id: string; name: string }[];
 }
 
-export default function TaskForm({ onSubmit, initialTask }: TaskFormProps) {
+export default function TaskForm({
+  onSubmit,
+  initialTask,
+  projects,
+  workers,
+}: TaskFormProps) {
   const [title, setTitle] = useState(initialTask?.title || "");
-  const [description, setDescription] = useState(initialTask?.description || "");
+  const [description, setDescription] = useState(
+    initialTask?.description || ""
+  );
   const [status, setStatus] = useState<"Pending" | "In Progress" | "Completed">(
     initialTask?.status || "Pending"
   );
   const [deadline, setDeadline] = useState(
-    initialTask?.deadline ? initialTask.deadline.toISOString().split('T')[0] : ""
+    initialTask?.deadline
+      ? initialTask.deadline.toISOString().split("T")[0]
+      : ""
   );
   const [projectId, setProjectId] = useState(initialTask?.projectId || "");
   const [workerId, setWorkerId] = useState(initialTask?.workerId || "");
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSubmit({
+    void onSubmit({
       id: initialTask?.id || "",
-      projectId: projectId,
-      workerId: workerId,
+      projectId,
+      workerId,
       title,
       description,
       status,
-      deadline: new Date(deadline)
+      deadline: new Date(deadline),
     });
   };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Task Title</label>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          Task Title
+        </label>
         <input
           className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           placeholder="Task Title"
@@ -61,7 +74,9 @@ export default function TaskForm({ onSubmit, initialTask }: TaskFormProps) {
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          Description
+        </label>
         <textarea
           className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           placeholder="Description"
@@ -73,33 +88,55 @@ export default function TaskForm({ onSubmit, initialTask }: TaskFormProps) {
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Project ID</label>
-        <input
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          Project
+        </label>
+        <select
           className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          placeholder="Project ID"
           value={projectId}
           onChange={(e) => setProjectId(e.target.value)}
           required
-        />
+        >
+          <option value="">Select project…</option>
+          {projects.map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.title}
+            </option>
+          ))}
+        </select>
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Worker ID</label>
-        <input
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          Worker
+        </label>
+        <select
           className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          placeholder="Worker ID"
           value={workerId}
           onChange={(e) => setWorkerId(e.target.value)}
           required
-        />
+        >
+          <option value="">Select worker…</option>
+          {workers.map((w) => (
+            <option key={w.id} value={w.id}>
+              {w.name}
+            </option>
+          ))}
+        </select>
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          Status
+        </label>
         <select
           className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           value={status}
-          onChange={(e) => setStatus(e.target.value as "Pending" | "In Progress" | "Completed")}
+          onChange={(e) =>
+            setStatus(
+              e.target.value as "Pending" | "In Progress" | "Completed"
+            )
+          }
         >
           <option>Pending</option>
           <option>In Progress</option>
@@ -108,7 +145,9 @@ export default function TaskForm({ onSubmit, initialTask }: TaskFormProps) {
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Deadline</label>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          Deadline
+        </label>
         <input
           className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           type="date"

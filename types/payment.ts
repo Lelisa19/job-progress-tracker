@@ -2,10 +2,11 @@
 export interface Payment {
   id: string;
   workerId: string;
-  workerName: string;      // Add this
-  totalWage: number;       // Add this
-  paidAmount: number;      // Add this
-  unpaidAmount: number;    // Add this
+  workerName: string;
+  totalWage: number;
+  paidAmount: number;
+  unpaidAmount: number;
   status: "Paid" | "Partial" | "Unpaid";
-  paymentDate: string;     // Add this
+  paymentDate: string;
+  createdAt?: string;
 }

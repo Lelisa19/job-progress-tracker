@@ -1,7 +1,7 @@
 // app/(dashboard)/employer/reports/page.tsx
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   BarChart3,
   Download,
@@ -16,71 +16,99 @@ import {
   AlertCircle
 } from "lucide-react";
 
-// Mock data for charts
-const workerPerformanceData = [
-  { id: "W1", name: "John Doe", score: 92, level: "High", color: "bg-blue-500" },
-  { id: "W2", name: "Jane Smith", score: 78, level: "Medium", color: "bg-orange-500" },
-  { id: "W3", name: "Mike Johnson", score: 65, level: "Medium", color: "bg-orange-500" },
-  { id: "W4", name: "Sarah Williams", score: 88, level: "High", color: "bg-blue-500" },
-  { id: "W5", name: "Tom Brown", score: 45, level: "Low", color: "bg-green-500" },
-  { id: "W6", name: "Lisa Davis", score: 95, level: "High", color: "bg-blue-500" },
-];
-
-const projectCompletionData = [
-  { name: "Downtown Office Renovation", completion: 85, color: "bg-blue-500" },
-  { name: "Riverside Apartments", completion: 40, color: "bg-orange-500" },
-  { name: "City Mall Expansion", completion: 95, color: "bg-green-500" },
-  { name: "Highway Bridge Repair", completion: 15, color: "bg-red-500" },
-  { name: "Suburban Housing Complex", completion: 60, color: "bg-yellow-500" },
-];
-
-const paymentTrendsData = [
-  { month: "Jan", paid: 45000, unpaid: 12000 },
-  { month: "Feb", paid: 52000, unpaid: 15000 },
-  { month: "Mar", paid: 48000, unpaid: 18000 },
-  { month: "Apr", paid: 61000, unpaid: 14000 },
-  { month: "May", paid: 55000, unpaid: 22000 },
-  { month: "Jun", paid: 67000, unpaid: 19000 },
-  { month: "Jul", paid: 72000, unpaid: 16000 },
-  { month: "Aug", paid: 68000, unpaid: 21000 },
-  { month: "Sep", paid: 71000, unpaid: 17000 },
-];
-
-// Projects for filter
-const projects = [
-  "All Projects",
-  "Downtown Office Renovation",
-  "Riverside Apartments",
-  "City Mall Expansion",
-  "Highway Bridge Repair",
-  "Suburban Housing Complex",
-];
-
-// Workers for filter
-const workers = [
-  "All Workers",
-  "John Doe",
-  "Jane Smith",
-  "Mike Johnson",
-  "Sarah Williams",
-  "Tom Brown",
-  "Lisa Davis",
-];
+type ReportPayload = {
+  workerPerformance: {
+    id: string;
+    name: string;
+    score: number;
+    level: string;
+    color: string;
+  }[];
+  projectCompletion: { name: string; completion: number; color: string }[];
+  paymentTrends: { month: string; paid: number; unpaid: number }[];
+  filterOptions: { projects: string[]; workers: string[] };
+};
 
 export default function ReportsAnalyticsPage() {
   const [dateRange, setDateRange] = useState("Last 30 Days");
   const [selectedProject, setSelectedProject] = useState("All Projects");
   const [selectedWorker, setSelectedWorker] = useState("All Workers");
+  const [report, setReport] = useState<ReportPayload | null>(null);
+  const [loadErr, setLoadErr] = useState<string | null>(null);
 
-  // Calculate summary statistics
+  useEffect(() => {
+    let c = false;
+    fetch("/api/employer/reports", { credentials: "include" })
+      .then((r) => r.json())
+      .then((j) => {
+        if (j.error) throw new Error(j.error);
+        if (c) return;
+        setReport({
+          workerPerformance: j.workerPerformance ?? [],
+          projectCompletion: j.projectCompletion ?? [],
+          paymentTrends: j.paymentTrends ?? [],
+          filterOptions: j.filterOptions ?? {
+            projects: ["All Projects"],
+            workers: ["All Workers"],
+          },
+        });
+      })
+      .catch((e: Error) => {
+        if (!c) setLoadErr(e.message || "Failed to load reports");
+      });
+    return () => {
+      c = true;
+    };
+  }, []);
+
+  const workerPerformanceData = report?.workerPerformance ?? [];
+  const projectCompletionData = report?.projectCompletion ?? [];
+  const paymentTrendsData = useMemo(() => {
+    const rows = report?.paymentTrends ?? [];
+    return rows.length > 0 ? rows : [{ month: "—", paid: 0, unpaid: 0 }];
+  }, [report]);
+
+  const projects = report?.filterOptions.projects ?? ["All Projects"];
+  const workers = report?.filterOptions.workers ?? ["All Workers"];
+
   const totalPayroll = paymentTrendsData.reduce((sum, month) => sum + month.paid, 0);
   const totalUnpaid = paymentTrendsData.reduce((sum, month) => sum + month.unpaid, 0);
-  const avgPerformance = Math.round(
-    workerPerformanceData.reduce((sum, w) => sum + w.score, 0) / workerPerformanceData.length
-  );
-  const avgCompletion = Math.round(
-    projectCompletionData.reduce((sum, p) => sum + p.completion, 0) / projectCompletionData.length
-  );
+  const avgPerformance = workerPerformanceData.length
+    ? Math.round(
+        workerPerformanceData.reduce((sum, w) => sum + w.score, 0) /
+          workerPerformanceData.length
+      )
+    : 0;
+  const avgCompletion = projectCompletionData.length
+    ? Math.round(
+        projectCompletionData.reduce((sum, p) => sum + p.completion, 0) /
+          projectCompletionData.length
+      )
+    : 0;
+
+  const exportCsv = () => {
+    const rows = [
+      ["Date range", dateRange],
+      ["Project", selectedProject],
+      ["Worker", selectedWorker],
+      ["Total payroll (trend sum)", String(totalPayroll)],
+      ["Total unpaid (trend sum)", String(totalUnpaid)],
+      ["Avg performance", String(avgPerformance)],
+      ["Avg completion %", String(avgCompletion)],
+    ];
+    const csv = rows.map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `jobtracker-report-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const exportPdf = () => {
+    window.print();
+  };
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
@@ -91,11 +119,29 @@ export default function ReportsAnalyticsPage() {
           <p className="text-sm text-gray-500 mt-1">
             Gain insights into worker performance, projects, and payments.
           </p>
+          {loadErr && (
+            <p className="text-sm text-red-600 mt-2" role="alert">
+              {loadErr}
+            </p>
+          )}
         </div>
-        <button className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50 transition-colors">
-          <Download className="w-4 h-4" />
-          Export Report
-        </button>
+        <div className="flex flex-wrap gap-2 print:hidden">
+          <button
+            type="button"
+            onClick={exportCsv}
+            className="flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 text-gray-600 transition-colors hover:bg-gray-50"
+          >
+            <Download className="h-4 w-4" />
+            Export CSV
+          </button>
+          <button
+            type="button"
+            onClick={exportPdf}
+            className="flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 text-gray-600 transition-colors hover:bg-gray-50"
+          >
+            Print / Save PDF
+          </button>
+        </div>
       </div>
 
       {/* Filters */}
@@ -227,7 +273,7 @@ export default function ReportsAnalyticsPage() {
             {workerPerformanceData.map((worker) => (
               <div key={worker.id} className="space-y-1">
                 <div className="flex justify-between text-sm">
-                  <span className="font-medium text-gray-700">{worker.id}</span>
+                  <span className="font-medium text-gray-700">{worker.name}</span>
                   <span className="text-gray-600">{worker.score}%</span>
                 </div>
                 <div className="w-full bg-gray-100 rounded-full h-2.5">
@@ -323,9 +369,15 @@ export default function ReportsAnalyticsPage() {
           <div className="relative h-64">
             <div className="absolute inset-0 flex items-end justify-around">
               {paymentTrendsData.map((month) => {
-                const maxAmount = Math.max(...paymentTrendsData.map(m => m.paid + m.unpaid));
-                const totalHeight = ((month.paid + month.unpaid) / maxAmount) * 100;
-                const paidHeight = (month.paid / (month.paid + month.unpaid)) * totalHeight;
+                const maxAmount = Math.max(
+                  1,
+                  ...paymentTrendsData.map((m) => m.paid + m.unpaid)
+                );
+                const total = month.paid + month.unpaid;
+                const totalHeight = total ? (total / maxAmount) * 100 : 0;
+                const paidHeight = total
+                  ? (month.paid / total) * totalHeight
+                  : 0;
 
                 return (
                   <div key={month.month} className="flex flex-col items-center w-12">

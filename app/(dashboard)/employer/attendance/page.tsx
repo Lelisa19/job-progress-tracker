@@ -1,115 +1,194 @@
 // C:\Users\laloo\job-progress-tracker\app\(dashboard)\employer\attendance\page.tsx
 "use client";
 
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from "react";
 import AttendanceTable from "./components/AttendanceTable";
 import CalendarView from "./components/CalendarView";
 import MapView from "./components/MapView";
 import { Attendance } from "../../../../types/attendance";
-import { QrCode, Users, CheckCircle2, XCircle, AlertCircle, Clock, Building2 } from "lucide-react";
+import {
+  QrCode,
+  Users,
+  CheckCircle2,
+  XCircle,
+  AlertCircle,
+  Clock,
+  Building2,
+} from "lucide-react";
 import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
 import QRScanner from "@/components/QRScanner";
 
-const CardContent = ({ children, className = "" }: { children: React.ReactNode; className?: string }) => (
-  <div className={className}>{children}</div>
-);
+const CardContent = ({
+  children,
+  className = "",
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) => <div className={className}>{children}</div>;
 
-const CardHeader = ({ children, className = "" }: { children: React.ReactNode; className?: string }) => (
+const CardHeader = ({
+  children,
+  className = "",
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) => (
   <div className={`border-b border-gray-200 pb-4 ${className}`}>{children}</div>
 );
 
-const CardTitle = ({ children, className = "" }: { children: React.ReactNode; className?: string }) => (
+const CardTitle = ({
+  children,
+  className = "",
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) => (
   <h3 className={`font-semibold text-gray-900 ${className}`}>{children}</h3>
 );
 
-const attendanceData: Attendance[] = [
-  {
-    id: "1",
-    workerId: "Carlos Mendoza - Electrician",
-    projectId: "PROJECT ALPHA",
-    date: new Date(2023, 9, 24),
-    checkInTime: "07:55 AM",
-    checkOutTime: "--",
-    location: { lat: 40.7128, lng: -74.0060 },
-    status: "Present"
-  },
-  {
-    id: "2",
-    workerId: "Aisha Johnson - Plumber",
-    projectId: "PROJECT ALPHA",
-    date: new Date(2023, 9, 24),
-    checkInTime: "08:30 AM",
-    checkOutTime: "--",
-    location: { lat: 40.7128, lng: -74.0060 },
-    status: "Late"
-  },
-  {
-    id: "3",
-    workerId: "David Smith - Carpenter",
-    projectId: "PROJECT ALPHA",
-    date: new Date(2023, 9, 24),
-    checkInTime: "--",
-    checkOutTime: "--",
-    location: { lat: 0, lng: 0 },
-    status: "Absent"
-  },
-  {
-    id: "4",
-    workerId: "Lin Chen - Site Supervisor",
-    projectId: "PROJECT ALPHA",
-    date: new Date(2023, 9, 24),
-    checkInTime: "07:45 AM",
-    checkOutTime: "04:00 PM",
-    location: { lat: 40.7128, lng: -74.0060 },
-    status: "Present"
-  },
-];
-
-const summaryData = {
-  present: 24,
-  late: 3,
-  absent: 2,
-  onLeave: 1,
-  activeCheckIns: 12,
-  projectName: "PROJECT ALPHA"
+type ApiRec = {
+  id: string;
+  workerId: string;
+  projectId: string;
+  date: string;
+  checkInTime?: string;
+  checkOutTime?: string;
+  location?: { lat: number; lng: number };
+  status: Attendance["status"];
+  workerName?: string;
+  projectName?: string;
 };
 
-const projectLocation = {
-  lat: 40.7128,
-  lng: -74.0060,
-  name: "PROJECT ALPHA Construction Site"
-};
+function mapRecord(r: ApiRec): Attendance {
+  return {
+    id: r.id,
+    workerId: r.workerId,
+    projectId: r.projectId,
+    workerName: r.workerName,
+    projectName: r.projectName,
+    date: new Date(r.date),
+    checkInTime: r.checkInTime?.trim() ? r.checkInTime : "--",
+    checkOutTime: r.checkOutTime?.trim() ? r.checkOutTime : "--",
+    location: r.location ?? { lat: 0, lng: 0 },
+    status: r.status,
+  };
+}
 
 export default function AttendancePage() {
+  const [attendanceData, setAttendanceData] = useState<Attendance[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [err, setErr] = useState<string | null>(null);
   const [isScannerOpen, setIsScannerOpen] = useState(false);
   const [scanResult, setScanResult] = useState<string | null>(null);
+
+  useEffect(() => {
+    let c = false;
+    fetch("/api/attendance", { credentials: "include" })
+      .then((r) => r.json())
+      .then((d) => {
+        if (c) return;
+        if (d.error) throw new Error(d.error);
+        const rows = (d.records ?? []) as ApiRec[];
+        setAttendanceData(rows.map(mapRecord));
+      })
+      .catch((e: Error) => {
+        if (!c) setErr(e.message || "Failed to load");
+      })
+      .finally(() => {
+        if (!c) setLoading(false);
+      });
+    return () => {
+      c = true;
+    };
+  }, []);
+
+  const summaryData = useMemo(() => {
+    const start = new Date();
+    start.setHours(0, 0, 0, 0);
+    const end = new Date();
+    end.setHours(23, 59, 59, 999);
+    const todayRecords = attendanceData.filter((r) => {
+      const d = new Date(r.date);
+      return d >= start && d <= end;
+    });
+    const present = todayRecords.filter((r) => r.status === "Present").length;
+    const late = todayRecords.filter((r) => r.status === "Late").length;
+    const absent = todayRecords.filter((r) => r.status === "Absent").length;
+    const onLeave = 0;
+    const activeCheckIns = todayRecords.filter((r) => {
+      const hasIn = !!r.checkInTime && r.checkInTime !== "--";
+      const noOut =
+        !r.checkOutTime || r.checkOutTime === "--";
+      return hasIn && noOut;
+    }).length;
+    const projectName =
+      todayRecords[0]?.projectName ??
+      attendanceData[0]?.projectName ??
+      "All projects";
+    return {
+      present,
+      late,
+      absent,
+      onLeave,
+      activeCheckIns,
+      projectName,
+    };
+  }, [attendanceData]);
+
+  const projectLocation = useMemo(() => {
+    const withLoc = attendanceData.find(
+      (r) =>
+        r.location &&
+        (r.location.lat !== 0 || r.location.lng !== 0)
+    );
+    return {
+      lat: withLoc?.location.lat ?? 40.7128,
+      lng: withLoc?.location.lng ?? -74.006,
+      name: withLoc?.projectName ?? "Site",
+    };
+  }, [attendanceData]);
 
   const handleQRDisplay = () => {
     setIsScannerOpen(true);
   };
 
+  const todayLabel = new Date().toLocaleDateString(undefined, {
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  });
+
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto p-6 space-y-6">
         <div className="mb-6">
-          <h1 className="text-3xl font-bold text-gray-900">Attendance Tracking</h1>
+          <h1 className="text-3xl font-bold text-gray-900">
+            Attendance Tracking
+          </h1>
           <p className="text-gray-500 mt-1">
             Manage daily check-ins, locations, and worker logs
           </p>
+          {err && <p className="mt-2 text-sm text-red-600">{err}</p>}
         </div>
 
         <div className="space-y-4">
           <div>
-            <h2 className="text-xl font-semibold text-gray-800">Today's Attendance</h2>
+            <h2 className="text-xl font-semibold text-gray-800">
+              Today&apos;s Attendance
+            </h2>
             <p className="text-sm text-gray-500">
-              Monitor check-in statuses and GPS locations for October 24, 2023.
+              Monitor check-in statuses and GPS locations for {todayLabel}.
             </p>
           </div>
 
           <Card className="shadow-sm">
             <CardContent className="p-0 overflow-x-auto">
-              <AttendanceTable records={attendanceData} />
+              {loading ? (
+                <p className="p-8 text-center text-gray-500">Loading…</p>
+              ) : (
+                <AttendanceTable records={attendanceData} />
+              )}
             </CardContent>
           </Card>
         </div>
@@ -122,10 +201,13 @@ export default function AttendancePage() {
                   <div className="bg-white/20 p-2 rounded-lg">
                     <QrCode className="h-6 w-6" />
                   </div>
-                  <h3 className="text-xl font-semibold">Worker Check-in QR Code</h3>
+                  <h3 className="text-xl font-semibold">
+                    Worker Check-in QR Code
+                  </h3>
                 </div>
                 <p className="text-blue-100">
-                  Display this QR code for workers to scan and check in with their mobile devices.
+                  Display this QR code for workers to scan and check in with
+                  their mobile devices.
                 </p>
                 {scanResult && (
                   <div className="bg-green-500 text-white text-sm p-2 rounded-lg mt-2">
@@ -154,7 +236,7 @@ export default function AttendancePage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-xl">
               <Users className="h-5 w-5" />
-              Today's Summary
+              Today&apos;s Summary
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -162,7 +244,9 @@ export default function AttendancePage() {
               <div className="bg-green-50 rounded-lg p-4 border border-green-100">
                 <div className="flex items-center justify-between">
                   <CheckCircle2 className="h-8 w-8 text-green-500" />
-                  <span className="text-2xl font-bold text-green-700">{summaryData.present}</span>
+                  <span className="text-2xl font-bold text-green-700">
+                    {summaryData.present}
+                  </span>
                 </div>
                 <p className="text-green-600 font-medium mt-2">Present</p>
                 <p className="text-xs text-green-500 mt-1">On time check-ins</p>
@@ -171,16 +255,20 @@ export default function AttendancePage() {
               <div className="bg-yellow-50 rounded-lg p-4 border border-yellow-100">
                 <div className="flex items-center justify-between">
                   <Clock className="h-8 w-8 text-yellow-500" />
-                  <span className="text-2xl font-bold text-yellow-700">{summaryData.late}</span>
+                  <span className="text-2xl font-bold text-yellow-700">
+                    {summaryData.late}
+                  </span>
                 </div>
                 <p className="text-yellow-600 font-medium mt-2">Late</p>
-                <p className="text-xs text-yellow-500 mt-1">Arrived after 8:00 AM</p>
+                <p className="text-xs text-yellow-500 mt-1">Late arrivals</p>
               </div>
 
               <div className="bg-red-50 rounded-lg p-4 border border-red-100">
                 <div className="flex items-center justify-between">
                   <XCircle className="h-8 w-8 text-red-500" />
-                  <span className="text-2xl font-bold text-red-700">{summaryData.absent}</span>
+                  <span className="text-2xl font-bold text-red-700">
+                    {summaryData.absent}
+                  </span>
                 </div>
                 <p className="text-red-600 font-medium mt-2">Absent</p>
                 <p className="text-xs text-red-500 mt-1">No show today</p>
@@ -189,22 +277,30 @@ export default function AttendancePage() {
               <div className="bg-blue-50 rounded-lg p-4 border border-blue-100">
                 <div className="flex items-center justify-between">
                   <AlertCircle className="h-8 w-8 text-blue-500" />
-                  <span className="text-2xl font-bold text-blue-700">{summaryData.onLeave}</span>
+                  <span className="text-2xl font-bold text-blue-700">
+                    {summaryData.onLeave}
+                  </span>
                 </div>
                 <p className="text-blue-600 font-medium mt-2">On Leave</p>
-                <p className="text-xs text-blue-500 mt-1">Approved time off</p>
+                <p className="text-xs text-blue-500 mt-1">
+                  (not tracked in DB)
+                </p>
               </div>
             </div>
 
             <div className="mt-6 pt-4 border-t border-gray-100">
               <div className="flex items-center justify-between text-sm">
                 <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-                  <span className="text-gray-600">Active on site: {summaryData.activeCheckIns} workers</span>
+                  <div className="w-3 h-3 bg-green-500 rounded-full" />
+                  <span className="text-gray-600">
+                    Active on site: {summaryData.activeCheckIns} workers
+                  </span>
                 </div>
                 <div className="flex items-center gap-2">
                   <Building2 className="h-4 w-4 text-gray-400" />
-                  <span className="text-gray-600">{summaryData.projectName}</span>
+                  <span className="text-gray-600">
+                    {summaryData.projectName}
+                  </span>
                 </div>
               </div>
             </div>

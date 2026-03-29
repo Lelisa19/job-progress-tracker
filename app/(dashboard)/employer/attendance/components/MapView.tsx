@@ -28,11 +28,21 @@ export default function MapView({ records, projectLocation }: MapViewProps) {
     // Filter active check-ins (checked in but not checked out)
     useEffect(() => {
         const active = records
-            .filter((record) => record.checkInTime !== "--" && record.checkOutTime === "--")
+            .filter((record) => {
+                const hasIn =
+                    !!record.checkInTime &&
+                    record.checkInTime !== "--";
+                const noOut =
+                    !record.checkOutTime ||
+                    record.checkOutTime === "--";
+                return hasIn && noOut;
+            })
             .map((record) => ({
                 id: record.id,
                 workerId: record.workerId,
-                workerName: `Worker ${record.workerId}`, // You'd get this from a worker service
+                workerName:
+                    (record as { workerName?: string }).workerName ??
+                    `Worker ${record.workerId}`,
                 lat: record.location.lat,
                 lng: record.location.lng,
                 checkInTime: record.checkInTime,

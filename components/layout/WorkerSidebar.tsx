@@ -1,63 +1,47 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { JobTrackerMark } from "./JobTrackerMark";
+
+const menuItems: { label: string; href: string }[] = [
+  { label: "Dashboard", href: "/worker/dashboard" },
+  { label: "My Tasks", href: "/worker/tasks" },
+  { label: "Attendance", href: "/worker/attendance" },
+  { label: "Payments", href: "/worker/payments" },
+  { label: "Profile", href: "/worker/profile" },
+];
 
 export default function WorkerSidebar() {
-    const router = useRouter();
-    const [activeTab, setActiveTab] = useState("Dashboard");
-    const [mounted, setMounted] = useState(false);
+  const pathname = usePathname();
 
-    useEffect(() => {
-        setMounted(true);
-        console.log("✅ WorkerSidebar MOUNTED");
-    }, []);
+  return (
+    <aside className="sticky top-0 flex h-screen w-64 shrink-0 flex-col border-r border-gray-200 bg-white">
+      <div className="border-b border-gray-100 px-5 py-6">
+        <JobTrackerMark />
+      </div>
+      <nav className="flex-1 space-y-1 p-4">
+        {menuItems.map((item) => {
+          const isActive =
+            pathname === item.href ||
+            (item.href !== "/worker/dashboard" &&
+              pathname?.startsWith(item.href));
 
-    const menuItems = [
-        "Dashboard",
-        "My Tasks",
-        "Attendance",
-        "Payments"
-    ];
-
-    const getPath = (item: string) => {
-        switch (item) {
-            case "Dashboard": return "/worker/dashboard";
-            case "My Tasks": return "/worker/my-tasks";
-            case "Attendance": return "/worker/attendance";
-            case "Payments": return "/worker/payments";
-            default: return "/worker/dashboard";
-        }
-    };
-
-    if (!mounted) {
-        return <div className="w-64 border-r border-gray-200 bg-white">Loading sidebar...</div>;
-    }
-
-    return (
-        <aside className="w-64 border-r border-gray-200 bg-white h-screen sticky top-0">
-            {/* Add a visible marker */}
-            <div className="p-2 bg-green-500 text-white text-xs text-center">
-                WORKER SIDEBAR ACTIVE
-            </div>
-
-            <nav className="p-4 space-y-1">
-                {menuItems.map((item) => (
-                    <button
-                        key={item}
-                        onClick={() => {
-                            setActiveTab(item);
-                            router.push(getPath(item));
-                        }}
-                        className={`w-full text-left px-4 py-2.5 rounded-lg text-[14px] font-medium transition-colors ${activeTab === item
-                            ? "bg-blue-50 text-blue-600"
-                            : "text-gray-400 hover:text-gray-900 hover:bg-gray-50"
-                            }`}
-                    >
-                        {item}
-                    </button>
-                ))}
-            </nav>
-        </aside>
-    );
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={`block rounded-lg px-4 py-2.5 text-[14px] font-medium transition-colors ${
+                isActive
+                  ? "bg-[#EFF6FF] text-[#3B82F6]"
+                  : "text-gray-500 hover:bg-gray-50 hover:text-gray-900"
+              }`}
+            >
+              {item.label}
+            </Link>
+          );
+        })}
+      </nav>
+    </aside>
+  );
 }

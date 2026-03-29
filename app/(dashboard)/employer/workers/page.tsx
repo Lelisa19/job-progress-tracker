@@ -1,51 +1,121 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import WorkerForm from "./components/WorkerForm";
 import WorkerTable from "./components/WorkerTable";
 import Modal from "@/components/ui/Modal";
 import { Worker } from "@/types/worker";
 
-const initialWorkers: Worker[] = [
-  { id: "1", name: "John Doe", phone: "0912345678", skill: "Carpenter", dailyWage: 200, reputation: 4.5 },
-  { id: "2", name: "Jane Smith", phone: "0987654321", skill: "Electrician", dailyWage: 250, reputation: 4.7 },
-];
+async function fetchWorkers(): Promise<Worker[]> {
+  const res = await fetch("/api/workers", { credentials: "include" });
+  if (!res.ok) return [];
+  const data = await res.json();
+  return data.workers ?? [];
+}
 
 export default function WorkersPage() {
-  const [workers, setWorkers] = useState(initialWorkers);
+  const [workers, setWorkers] = useState<Worker[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const [loadError, setLoadError] = useState<string | null>(null);
 
-  const addWorker = (worker: Partial<Worker>) => {
-    setWorkers([...workers, { ...worker, id: String(workers.length + 1) } as Worker]);
+  const reload = async () => {
+    try {
+      setLoadError(null);
+      const list = await fetchWorkers();
+      setWorkers(list);
+    } catch {
+      setLoadError("Could not load workers. Is MongoDB connected?");
+    }
+  };
+
+  useEffect(() => {
+    reload();
+  }, []);
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return workers;
+    return workers.filter(
+      (w) =>
+        w.name.toLowerCase().includes(q) ||
+        w.skill.toLowerCase().includes(q) ||
+        (w.email && w.email.toLowerCase().includes(q))
+    );
+  }, [workers, search]);
+
+  const addWorker = async (worker: Partial<Worker>) => {
+    const res = await fetch("/api/workers", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify(worker),
+    });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      alert(d.error || "Failed to add worker");
+      return;
+    }
     setIsModalOpen(false);
+    await reload();
   };
 
-  // Add delete function
-  const deleteWorker = (id: string) => {
-    setWorkers(workers.filter(worker => worker.id !== id));
+  const deleteWorker = async (id: string) => {
+    const res = await fetch(`/api/workers/${id}`, {
+      method: "DELETE",
+      credentials: "include",
+    });
+    if (!res.ok) {
+      alert("Failed to delete");
+      return;
+    }
+    await reload();
   };
 
-  // Add update function
-  const updateWorker = (updatedWorker: Worker) => {
-    setWorkers(workers.map(worker =>
-      worker.id === updatedWorker.id ? updatedWorker : worker
-    ));
+  const updateWorker = async (updatedWorker: Worker) => {
+    const res = await fetch(`/api/workers/${updatedWorker.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify(updatedWorker),
+    });
+    if (!res.ok) {
+      alert("Failed to update");
+      return;
+    }
+    await reload();
   };
 
   return (
     <div className="p-6">
-      <div className="flex justify-between items-center mb-6">
+      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-2xl font-bold">Workers Management</h1>
-        <button
-          className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition-colors"
-          onClick={() => setIsModalOpen(true)}
-        >
-          Add Worker
-        </button>
+        <div className="flex flex-wrap gap-3">
+          <input
+            type="search"
+            placeholder="Search worker…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+          />
+          <button
+            type="button"
+            className="rounded-lg bg-blue-500 px-4 py-2 text-white transition-colors hover:bg-blue-600"
+            onClick={() => setIsModalOpen(true)}
+          >
+            Add Worker
+          </button>
+        </div>
       </div>
 
+      {loadError && (
+        <p className="mb-4 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900">
+          {loadError}
+        </p>
+      )}
+
       <WorkerTable
-        workers={workers}
+        workers={filtered}
         onDelete={deleteWorker}
         onUpdate={updateWorker}
       />

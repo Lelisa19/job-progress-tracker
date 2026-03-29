@@ -1,38 +1,53 @@
-// C:\Users\laloo\job-progress-tracker\middleware.ts
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
+import { jwtVerify } from "jose";
 
-// Paths where middleware will run
+/**
+ * Middleware runs on the Edge (before your page). Here we verify the JWT cookie
+ * so `/employer/*` and `/worker/*` are not public. `jose` works in Edge; `bcrypt` does not.
+ */
 export const config = {
-  matcher: ["/(dashboard)/:path*"], // Apply to all dashboard routes
+  matcher: ["/employer/:path*", "/worker/:path*"],
 };
 
-export default function middleware(req: NextRequest) {
-  const url = req.nextUrl.clone();
+function getSecret() {
+  const s = process.env.JWT_SECRET;
+  if (!s || s.length < 32) {
+    return null;
+  }
+  return new TextEncoder().encode(s);
+}
 
-  // Get token from cookies (replace 'token' with your JWT cookie name)
-  const token = req.cookies.get("token")?.value;
+export default async function middleware(request: NextRequest) {
+  const secret = getSecret();
+  const token = request.cookies.get("token")?.value;
+  const loginUrl = new URL("/login", request.url);
+  loginUrl.searchParams.set("from", request.nextUrl.pathname);
 
-  // If no token, redirect to login page
+  if (!secret) {
+    console.warn(
+      "[middleware] JWT_SECRET missing or too short — set a 32+ char secret in .env.local"
+    );
+    return NextResponse.next();
+  }
+
   if (!token) {
-    url.pathname = "/login";
-    return NextResponse.redirect(url);
+    return NextResponse.redirect(loginUrl);
   }
 
-  // Optional: You can decode the JWT to check role if you want
-  // Example: block workers from employer pages
-  const pathname = req.nextUrl.pathname;
+  try {
+    const { payload } = await jwtVerify(token, secret);
+    const role = payload.role as string | undefined;
+    const path = request.nextUrl.pathname;
 
-  // Example: restrict access
-  if (pathname.startsWith("/dashboard/employer") && token === "worker") {
-    url.pathname = "/unauthorized"; // Or redirect to worker dashboard
-    return NextResponse.redirect(url);
+    if (path.startsWith("/employer") && role !== "employer") {
+      return NextResponse.redirect(new URL("/worker/dashboard", request.url));
+    }
+    if (path.startsWith("/worker") && role !== "worker") {
+      return NextResponse.redirect(new URL("/employer/dashboard", request.url));
+    }
+    return NextResponse.next();
+  } catch {
+    return NextResponse.redirect(loginUrl);
   }
-
-  if (pathname.startsWith("/dashboard/worker") && token === "employer") {
-    url.pathname = "/unauthorized";
-    return NextResponse.redirect(url);
-  }
-
-  // If all checks pass, continue
-  return NextResponse.next();
 }
