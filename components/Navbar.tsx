@@ -25,9 +25,6 @@ export default function Navbar() {
   const [notifications, setNotifications] = useState<NavNotification[]>([]);
   const [readIds, setReadIds] = useState<Set<string>>(new Set());
 
-  const isLandingStyle =
-    pathname === "/" || pathname === "/login" || pathname === "/signup";
-
   const loadNotifications = useCallback(() => {
     if (!user) {
       setNotifications([]);
@@ -73,31 +70,26 @@ export default function Navbar() {
         </span>
       </Link>
 
-      {!isLandingStyle && (
-        <div className="hidden flex-1 items-center justify-center gap-8 md:flex">
-          <Link
-            href="/#features"
-            className="text-sm font-medium text-gray-600 hover:text-gray-900"
-          >
-            Features
-          </Link>
-          <Link
-            href="/#about"
-            className="text-sm font-medium text-gray-600 hover:text-gray-900"
-          >
-            About
-          </Link>
-          <Link
-            href="/#contact"
-            className="text-sm font-medium text-gray-600 hover:text-gray-900"
-          >
-            Contact
-          </Link>
-        </div>
-      )}
-      {isLandingStyle && (
-        <div className="hidden flex-1 md:block" aria-hidden />
-      )}
+      <div className="hidden flex-1 items-center justify-center gap-8 md:flex">
+        <Link
+          href="/#features"
+          className="text-sm font-medium text-gray-600 hover:text-gray-900"
+        >
+          Features
+        </Link>
+        <Link
+          href="/#about"
+          className="text-sm font-medium text-gray-600 hover:text-gray-900"
+        >
+          About
+        </Link>
+        <Link
+          href="/#contact"
+          className="text-sm font-medium text-gray-600 hover:text-gray-900"
+        >
+          Contact
+        </Link>
+      </div>
 
       {isLoading ? (
         <div className="h-10 w-10 animate-pulse rounded-full bg-gray-200" />
@@ -131,22 +123,27 @@ export default function Navbar() {
           </div>
 
           <div className="flex items-center gap-3">
-            <div className="text-right">
-              <div className="text-sm font-medium text-gray-900">{user.name}</div>
-              <div className="text-xs capitalize text-gray-500">{user.role}</div>
-            </div>
-            {user.avatarUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={user.avatarUrl}
-                alt=""
-                className="h-10 w-10 rounded-full border border-gray-200 object-cover shadow-sm"
-              />
-            ) : (
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-600 text-sm font-semibold text-white">
-                {user.initials}
+            <Link 
+              href={user.role?.toLowerCase() === 'worker' ? '/worker/profile' : '/employer/settings'}
+              className="flex items-center gap-3 transition-opacity hover:opacity-80"
+            >
+              <div className="text-right">
+                <div className="text-sm font-medium text-gray-900">{user.name}</div>
+                <div className="text-xs capitalize text-gray-500">{user.role}</div>
               </div>
-            )}
+              {user.avatarUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={user.avatarUrl}
+                  alt=""
+                  className="h-10 w-10 rounded-full border border-gray-200 object-cover shadow-sm"
+                />
+              ) : (
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-600 text-sm font-semibold text-white">
+                  {user.initials}
+                </div>
+              )}
+            </Link>
             <button
               type="button"
               onClick={async () => {
