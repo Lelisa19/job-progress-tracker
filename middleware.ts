@@ -2,10 +2,7 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { jwtVerify } from "jose";
 
-/**
- * Middleware runs on the Edge (before your page). Here we verify the JWT cookie
- * so `/employer/*` and `/worker/*` are not public. `jose` works in Edge; `bcrypt` does not.
- */
+
 export const config = {
   matcher: ["/employer/:path*", "/worker/:path*"],
 };

@@ -1,9 +1,4 @@
-/**
- * JWT helpers (jose library)
- * --------------------------
- * We use `jose` because it works in both Node.js Route Handlers and Edge Middleware.
- * HS256 is a simple shared-secret algorithm; in production, keep JWT_SECRET long and private.
- */
+
 import { SignJWT, jwtVerify, type JWTPayload } from "jose";
 
 export interface AuthTokenPayload extends JWTPayload {
