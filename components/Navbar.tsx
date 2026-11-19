@@ -72,19 +72,19 @@ export default function Navbar() {
 
       <div className="hidden flex-1 items-center justify-center gap-8 md:flex">
         <Link
-          href="/#features"
+          href="/features"
           className="text-sm font-medium text-gray-600 hover:text-gray-900"
         >
           Features
         </Link>
         <Link
-          href="/#about"
+          href="/about"
           className="text-sm font-medium text-gray-600 hover:text-gray-900"
         >
           About
         </Link>
         <Link
-          href="/#contact"
+          href="/contact"
           className="text-sm font-medium text-gray-600 hover:text-gray-900"
         >
           Contact

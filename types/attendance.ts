@@ -10,6 +10,6 @@ export interface Attendance {
   date: Date;
   checkInTime: string;
   checkOutTime: string;
-  location: { lat: number; lng: number };
+  location: { lat: number; lng: number; address?: string };
   status: "Present" | "Absent" | "Late";
 }

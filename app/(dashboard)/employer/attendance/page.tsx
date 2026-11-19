@@ -54,7 +54,7 @@ type ApiRec = {
   date: string;
   checkInTime?: string;
   checkOutTime?: string;
-  location?: { lat: number; lng: number };
+  location?: { lat: number; lng: number; address?: string };
   status: Attendance["status"];
   workerName?: string;
   projectName?: string;

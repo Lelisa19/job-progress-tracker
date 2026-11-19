@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import AttendanceTable from "../../employer/attendance/components/AttendanceTable";
 import { Attendance } from "../../../../types/attendance";
+import WorkerCheckInUI from "../../../../components/worker/WorkerCheckInUI";
 
 type ApiRec = {
   id: string;
@@ -11,7 +12,7 @@ type ApiRec = {
   date: string;
   checkInTime?: string;
   checkOutTime?: string;
-  location?: { lat: number; lng: number };
+  location?: { lat: number; lng: number; address?: string };
   status: Attendance["status"];
   projectTitle?: string;
 };
@@ -35,34 +36,41 @@ export default function WorkerAttendancePage() {
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
 
-  useEffect(() => {
-    let c = false;
+  const fetchRecords = useCallback(() => {
     fetch("/api/attendance", { credentials: "include" })
       .then((r) => r.json())
       .then((d) => {
         if (d.error) throw new Error(d.error);
-        if (!c) setRecords((d.records ?? []).map((x: ApiRec) => mapRecord(x)));
+        setRecords((d.records ?? []).map((x: ApiRec) => mapRecord(x)));
+        setErr(null);
       })
       .catch((e: Error) => {
-        if (!c) setErr(e.message || "Failed to load");
+        setErr(e.message || "Failed to load");
       })
       .finally(() => {
-        if (!c) setLoading(false);
+        setLoading(false);
       });
-    return () => {
-      c = true;
-    };
   }, []);
+
+  useEffect(() => {
+    fetchRecords();
+  }, [fetchRecords]);
 
   return (
     <div>
-      <h1 className="text-2xl font-bold mb-4">My Attendance</h1>
-      {err && <p className="mb-2 text-sm text-red-600">{err}</p>}
-      {loading ? (
-        <p className="text-gray-500">Loading…</p>
-      ) : (
-        <AttendanceTable records={records} />
-      )}
+      <h1 className="text-2xl font-bold mb-6">My Attendance</h1>
+      
+      <WorkerCheckInUI onSuccess={fetchRecords} />
+
+      <div className="rounded-xl bg-white p-6 shadow-sm border border-gray-100">
+        <h2 className="mb-4 text-lg font-bold text-gray-900">Attendance History</h2>
+        {err && <p className="mb-2 text-sm text-red-600">{err}</p>}
+        {loading ? (
+          <p className="text-gray-500">Loading…</p>
+        ) : (
+          <AttendanceTable records={records} />
+        )}
+      </div>
     </div>
   );
 }

@@ -40,6 +40,29 @@ export async function POST(req: NextRequest) {
     });
     const lat = Number(body.lat ?? 0);
     const lng = Number(body.lng ?? 0);
+    let address = String(body.address ?? "");
+
+    if (!address && lat !== 0 && lng !== 0) {
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 8000);
+        const geoRes = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`, {
+          headers: {
+            "User-Agent": "JobProgressTrackerApp/1.0",
+            "Accept-Language": "en-US,en;q=0.9"
+          },
+          signal: controller.signal
+        });
+        clearTimeout(timeoutId);
+        
+        if (geoRes.ok) {
+          const geoData = await geoRes.json();
+          address = geoData.display_name || "";
+        }
+      } catch (err) {
+        console.warn("Server reverse geocoding failed", err);
+      }
+    }
 
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
@@ -51,7 +74,7 @@ export async function POST(req: NextRequest) {
         date: today,
         checkInTime: timeStr,
         checkOutTime: "",
-        location: { lat, lng },
+        location: { lat, lng, address },
         status: "Present",
       });
       return NextResponse.json({ ok: true, id: a._id.toString(), checkInTime: timeStr });
@@ -67,7 +90,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "No open check-in for today" }, { status: 400 });
     }
     open.checkOutTime = timeStr;
-    open.location = { lat, lng };
+    open.location = { lat, lng, address };
     await open.save();
     return NextResponse.json({ ok: true, checkOutTime: timeStr });
   } catch (e) {

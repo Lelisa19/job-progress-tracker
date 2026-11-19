@@ -24,6 +24,7 @@ const AttendanceSchema = new Schema(
     location: {
       lat: { type: Number, default: 0 },
       lng: { type: Number, default: 0 },
+      address: { type: String, default: "" },
     },
     status: {
       type: String,

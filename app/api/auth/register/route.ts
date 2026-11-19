@@ -47,10 +47,31 @@ export async function POST(req: NextRequest) {
 
     if (role === "worker") {
       const { WorkerModel } = await import("@/models/Worker");
-      await WorkerModel.findOneAndUpdate(
-        { email },
-        { $set: { userId: user._id } }
-      );
+      const employerId = body.employerId;
+      if (employerId) {
+
+        const existingWorker = await WorkerModel.findOne({ email, employerId });
+        if (existingWorker) {
+          existingWorker.userId = user._id;
+          await existingWorker.save();
+        } else {
+
+          await WorkerModel.create({
+            employerId,
+            userId: user._id,
+            name: user.name,
+            email: user.email,
+            phone: user.phone,
+            skill: "General",
+            dailyWage: 0,
+          });
+        }
+      } else {
+        await WorkerModel.findOneAndUpdate(
+          { email },
+          { $set: { userId: user._id } }
+        );
+      }
     }
 
     const token = await signAuthToken({

@@ -5,6 +5,7 @@ import WorkerForm from "./components/WorkerForm";
 import WorkerTable from "./components/WorkerTable";
 import Modal from "@/components/ui/Modal";
 import { Worker } from "@/types/worker";
+import { useAuth } from "@/app/contexts/AuthContext";
 
 async function fetchWorkers(): Promise<Worker[]> {
   const res = await fetch("/api/workers", { credentials: "include" });
@@ -86,6 +87,16 @@ export default function WorkersPage() {
     await reload();
   };
 
+  const { user } = useAuth();
+  
+  const handleCopyInviteLink = () => {
+    if (user?.id) {
+      const inviteUrl = `${window.location.origin}/signup?employerId=${user.id}`;
+      navigator.clipboard.writeText(inviteUrl);
+      alert("Worker invite link copied to clipboard: " + inviteUrl);
+    }
+  };
+
   return (
     <div className="p-6">
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -98,6 +109,13 @@ export default function WorkersPage() {
             onChange={(e) => setSearch(e.target.value)}
             className="rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
           />
+          <button
+            type="button"
+            className="rounded-lg bg-green-500 px-4 py-2 text-white transition-colors hover:bg-green-600"
+            onClick={handleCopyInviteLink}
+          >
+            Copy Invite Link
+          </button>
           <button
             type="button"
             className="rounded-lg bg-blue-500 px-4 py-2 text-white transition-colors hover:bg-blue-600"

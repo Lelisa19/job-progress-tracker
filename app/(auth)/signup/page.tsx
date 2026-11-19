@@ -10,13 +10,17 @@ function SignupContent() {
     const router = useRouter();
     const { refreshUser } = useAuth();
     const [role, setRole] = useState<"employer" | "worker">("employer");
+    const [employerId, setEmployerId] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [pending, setPending] = useState(false);
 
     useEffect(() => {
-        const urlRole = searchParams.get("role");
-        if (urlRole === "worker" || urlRole === "employer") {
-            setRole(urlRole);
+        const urlEmployerId = searchParams.get("employerId");
+        if (urlEmployerId) {
+            setRole("worker");
+            setEmployerId(urlEmployerId);
+        } else {
+            setRole("employer");
         }
     }, [searchParams]);
 
@@ -44,7 +48,7 @@ function SignupContent() {
             const res = await fetch("/api/auth/register", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ name, email, phone, password, role }),
+                body: JSON.stringify({ name, email, phone, password, role, employerId }),
                 credentials: "include",
             });
             const data = await res.json().catch(() => ({}));
@@ -86,31 +90,9 @@ function SignupContent() {
                 {/* Header */}
                 <div className="text-center mb-8">
                     <h1 className="text-[26px] font-bold text-gray-900 tracking-tight">Create an account</h1>
-                    <p className="text-[15px] text-gray-500 mt-2">Sign up for JobTracker</p>
-                </div>
-
-                {/* Role Toggle */}
-                <div className="flex p-1 bg-[#f1f5f9] rounded-[10px] mb-8">
-                    <button
-                        type="button"
-                        onClick={() => setRole('employer')}
-                        className={`flex-1 rounded-md py-2.5 text-[14px] font-semibold transition-colors ${role === 'employer'
-                                ? 'bg-white shadow-sm text-gray-900'
-                                : 'text-gray-400 hover:text-gray-600'
-                            }`}
-                    >
-                        Employer
-                    </button>
-                    <button
-                        type="button"
-                        onClick={() => setRole('worker')}
-                        className={`flex-1 rounded-md py-2.5 text-[14px] font-semibold transition-colors ${role === 'worker'
-                                ? 'bg-white shadow-sm text-gray-900'
-                                : 'text-gray-400 hover:text-gray-600'
-                            }`}
-                    >
-                        Worker
-                    </button>
+                    <p className="text-[15px] text-gray-500 mt-2">
+                        {role === 'worker' ? 'Sign up as a Worker' : 'Sign up for JobTracker as an Employer'}
+                    </p>
                 </div>
 
                 {/* Form */}
